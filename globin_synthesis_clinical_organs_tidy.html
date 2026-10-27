@@ -1,0 +1,87 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Developmental Globin Chain Synthesis</title><style>body{font-family:Arial,sans-serif;margin:0;background:#f4f7fb;color:#16243b}.wrap{max-width:1050px;margin:25px auto;padding:22px;background:white;border-radius:16px;box-shadow:0 5px 25px #1222}h1{font-size:25px;margin:0 0 6px}.sub{color:#58687c;margin:0 0 20px}svg{width:100%;height:auto;background:#fcfdff;border:1px solid #dce4ed;border-radius:12px}.controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:20px}button,select{padding:10px 17px;border:1px solid #b7c7d8;border-radius:8px;background:white;font-size:15px;cursor:pointer}button.primary{background:#1766ba;color:white;border-color:#1766ba}input[type=range]{width:100%;margin-top:16px;accent-color:#1766ba}.labels,.legend{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:#506175;font-size:13px}.legend{justify-content:center;margin-top:12px;font-size:24px;font-weight:800;align-items:center;gap:20px}.legend span{margin:0 8px;display:inline-flex;align-items:center;gap:7px}.swatch{display:inline-block;width:26px;height:7px;vertical-align:middle;margin-right:5px}.note{padding:15px;background:#edf4fc;border-radius:10px;margin-top:18px;line-height:1.5}.age{font-weight:bold;font-size:18px;margin-left:auto}@media(max-width:600px){.wrap{margin:0;padding:12px}.age{margin-left:0}}</style></head><body><main class="wrap"><h1>Developmental Synthesis of Globin Chains</h1><p class="sub">Interactive schematic · From early gestation to 42 weeks after birth</p><svg id="chart" viewBox="0 0 850 545" role="img" aria-label="Developmental globin chain synthesis graph"></svg><div class="controls" style="margin:12px 0 4px"><label><strong>Clinical condition:</strong> <select id="condition"><option value="normal">Normal development</option><option value="thal">β-thalassaemia major (illustrative β⁰)</option><option value="sickle">Sickle cell anaemia (HbSS)</option></select></label></div><div class="controls"><button class="primary" id="play">▶ Play</button><button id="restart">↺ Restart</button><label>Speed <select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label><span class="age" id="age">Gestational week 12</span></div><input id="slider" type="range" min="0" max="82" step="0.1" value="12" aria-label="Developmental age"><div class="labels"><span>Early gestation</span><span>Birth: 40 weeks</span><span>42 weeks after birth</span></div><div class="note" id="clinicalNote" style="background:#fff8e9"><strong>Normal:</strong> HbF predominates before birth; HbA becomes predominant after birth.</div><div class="note"><strong id="stageTitle">Fetal period</strong><div id="stageText"></div><small>Teaching schematic: each curve represents relative globin-chain synthesis on its own scale, not the measured proportion of total haemoglobin. The displayed curves are illustrative rather than experimental data.</small></div></main><script>
+'use strict';
+const svg=document.getElementById('chart'),slider=document.getElementById('slider'),age=document.getElementById('age'),play=document.getElementById('play');
+const NS='http://www.w3.org/2000/svg';const X=t=>90+t/82*710,Y=v=>345-v*(280/55);
+const chains=[{name:'α',color:'#1675d1',f:t=>100/(1+Math.exp(-(t-9)/3))},{name:'β',color:'#8b1732',f:t=>96/(1+Math.exp(-(t-46)/5))},{name:'γ',color:'#e53935',f:t=>96*(1+Math.exp(-(46-13)/3))/(1+Math.exp(-(t-13)/3))/(1+Math.exp((t-46)/5))},{name:'δ',color:'#a36ac1',f:t=>3.5/(1+Math.exp(-(t-48)/6))},{name:'ε',color:'#e2a12a',f:t=>50*Math.exp(-Math.pow((t-8)/5,2))},{name:'ζ',color:'#82919f',f:t=>43*Math.exp(-Math.pow((t-5)/3.7,2))}];
+// Rescale the illustrative chain profiles so alpha plateaus at 50%.
+chains.forEach(c=>{const original=c.f;c.f=t=>original(t)*0.5+(c.name==='γ' && t>46 ? 2.1*Math.pow((t-46)/36,2) : 0)});
+const normalFns=chains.map(c=>c.f); let condition='normal';
+function node(tag,attrs,parent=svg){const e=document.createElementNS(NS,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,String(v)));parent.appendChild(e);return e}function text(x,y,str,attrs={}){const e=node('text',{x,y,fill:'#24374f','font-size':13,...attrs});e.textContent=str;return e}
+node('rect',{x:90,y:65,width:710,height:280,fill:'#f7faff'});node('rect',{x:X(40),y:65,width:X(82)-X(40),height:280,fill:'#eaf3fc'});
+for(let v of [0,10,20,30,40,50,55]){node('line',{x1:90,y1:Y(v),x2:800,y2:Y(v),stroke:'#d8e1ea','stroke-dasharray':'4 5'});text(76,Y(v)+5,v,{'text-anchor':'end'})}text(21,205,'Relative globin-chain synthesis (%)',{'font-size':16,'font-weight':'bold','text-anchor':'middle',transform:'rotate(-90 21 205)'});
+for(let t of [0,10,20,30,40,50,60,70,82]){text(X(t),368,t<=40?t:t-40,{'text-anchor':'middle'})}text(X(20),400,'Gestational weeks',{'text-anchor':'middle','font-size':15});text(X(61),400,'Weeks after birth',{'text-anchor':'middle','font-size':15});node('line',{x1:X(40),x2:X(40),y1:48,y2:345,stroke:'#566a80','stroke-width':2,'stroke-dasharray':'5 5'});text(X(40)+6,48,'Birth',{'font-weight':'bold'});
+const curvePaths=[];for(const c of chains){let d='';for(let i=0;i<=328;i++){const t=i/4;d+=(i?'L':'M')+X(t).toFixed(2)+','+Y(c.f(t)).toFixed(2)+' '}curvePaths.push(node('path',{d,fill:'none',stroke:c.color,'stroke-width':['α','β','γ'].includes(c.name)?4:3,'stroke-linecap':'round'}));}
+// Direct labels are placed on the curves, with a white halo for legibility.
+const labelPositions={'α':19,'β':69,'γ':31,'δ':75,'ε':10,'ζ':3.5};
+const directLabels=[];for(const c of chains){const pos=labelPositions[c.name];directLabels.push(text(X(pos),Y(c.f(pos))-9,c.name,{'text-anchor':'middle','font-size':24,'font-weight':800,fill:c.color,stroke:'#fff','stroke-width':5,'stroke-linejoin':'round','paint-order':'stroke fill'}));}
+const marker=node('line',{y1:65,y2:345,stroke:'#24374f','stroke-width':2,'stroke-dasharray':'5 4'});const dots=chains.map(c=>node('circle',{r:5,fill:c.color,stroke:'#fff','stroke-width':1.5}));// Moving haemoglobin labels are attached to the corresponding globin-chain dots.
+// HbF follows γ, HbA follows β, and HbA₂ follows δ; α is shared by all three.
+const hbLabels=[
+ {name:'HbF',chain:2,color:'#e53935',dy:-23},
+ {name:'HbA',chain:1,color:'#8b1732',dy:-25},
+ {name:'HbA₂',chain:3,color:'#a36ac1',dy:27}
+].map(h=>{
+ const g=node('g',{'pointer-events':'none'});
+ const stem=node('line',{x1:0,y1:0,x2:0,y2:0,stroke:h.color,'stroke-width':1.6},g);
+ const box=node('rect',{x:-30,y:-14,width:60,height:28,rx:8,fill:'#ffffff',stroke:h.color,'stroke-width':1.5},g);
+ const label=node('text',{x:0,y:5,'text-anchor':'middle','font-size':17,'font-weight':'bold',fill:h.color},g);
+ label.textContent=h.name;
+ return {...h,g,stem};
+});
+let t=12,running=false,last=0,frame=0;
+const hbSLabel=node('g',{'pointer-events':'none'});
+const hbSBox=node('rect',{x:-33,y:-14,width:66,height:28,rx:8,fill:'#fff',stroke:'#8b1732','stroke-width':1.5},hbSLabel);
+const hbSText=node('text',{x:0,y:5,'text-anchor':'middle','font-size':17,'font-weight':'bold',fill:'#8b1732'},hbSLabel);hbSText.textContent='HbS';
+function refreshCurves(){
+ chains.forEach((c,i)=>{
+  const base=normalFns[i];
+  if(condition==='thal' && c.name==='β')c.f=t=>base(t)*0.015;
+  else if(condition==='thal' && c.name==='γ')c.f=t=>base(t)+(t>40?Math.min(12,(t-40)*.27):0);
+  else c.f=base;
+  let d='';for(let j=0;j<=328;j++){const a=j/4;d+=(j?'L':'M')+X(a).toFixed(2)+','+Y(c.f(a)).toFixed(2)+' '};curvePaths[i].setAttribute('d',d);
+  const pos=labelPositions[c.name];directLabels[i].setAttribute('y',Y(c.f(pos))-9);
+ });
+ document.getElementById('clinicalNote').innerHTML=condition==='normal'?'<strong>Normal:</strong> HbF (α₂γ₂) predominates before birth; HbA (α₂β₂) becomes predominant after birth.':condition==='thal'?'<strong>β⁰-thalassaemia major:</strong> β-globin production is absent or severely reduced; α-chains are relatively unpaired. HbF may persist or increase, but this varies by genotype and treatment. The curves are conceptual, not patient measurements.':'<strong>Sickle cell anaemia (HbSS):</strong> β-globin is produced as mutant βˢ, forming HbS (α₂βˢ₂), not HbA. HbF inhibits HbS polymerisation; symptoms often emerge as HbF declines after infancy. The β curve represents βˢ synthesis, not HbA.';
+ render();
+}
+document.getElementById('condition').addEventListener('change',e=>{condition=e.target.value;refreshCurves()});
+function render(){slider.value=t;age.textContent=t<40?'Gestational week '+t.toFixed(1):t===40?'Birth (40 weeks)':'Postnatal week '+(t-40).toFixed(1);marker.setAttribute('x1',X(t));marker.setAttribute('x2',X(t));chains.forEach((c,i)=>{dots[i].setAttribute('cx',X(t));dots[i].setAttribute('cy',Y(c.f(t)))});
+ hbLabels.forEach(h=>{
+   const v=chains[h.chain].f(t),visible=(h.name==='HbF'?v>4:v>0.8);
+   h.g.setAttribute('visibility',(condition==='sickle'&&h.name==='HbA')||(condition==='thal'&&h.name==='HbA')?'hidden':visible?'visible':'hidden');
+   const px=X(t),py=Y(v),cy=Math.max(84,Math.min(325,py+h.dy));
+   h.g.setAttribute('transform',`translate(${px},${cy})`);
+   h.stem.setAttribute('x1',0);h.stem.setAttribute('y1',-h.dy>0?14:-14);
+   h.stem.setAttribute('x2',0);h.stem.setAttribute('y2',py-cy);
+ });hbSLabel.setAttribute('visibility',condition==='sickle'&&t>=30?'visible':'hidden');hbSLabel.setAttribute('transform',`translate(${X(t)},${Math.max(84,Y(chains[1].f(t))-27)})`);let title,description;if(t<12){title='Embryonic period';description='Embryonic ζ- and ε-globin synthesis declines as α- and γ-globin synthesis increases.'}else if(t<40){title='Fetal period';description='α- and γ-globin chains predominate, supporting fetal haemoglobin HbF (α₂γ₂).'}else if(t<60){title='Postnatal haemoglobin switch';description='γ-globin synthesis declines while β-globin synthesis increases, promoting the transition from HbF to HbA (α₂β₂).'}else{title='Adult-type pattern';description='α- and β-globin synthesis predominate; δ-globin contributes a small HbA₂ (α₂δ₂) fraction.'}if(condition==='thal'&&t>=40){title='β-thalassaemia: impaired β-chain synthesis';description='Severely reduced β-globin leaves excess α-globin; ineffective erythropoiesis and haemolysis become clinically important after the HbF-to-HbA switch.'}if(condition==='sickle'&&t>=40){title='HbSS: HbS replaces HbA';description='Mutant βˢ chains produce HbS. Falling HbF reduces protection against HbS polymerisation, sickling and haemolysis.'}document.getElementById('stageTitle').textContent=title;document.getElementById('stageText').textContent=description}
+function stop(){running=false;cancelAnimationFrame(frame);last=0;play.textContent='▶ Play'}function tick(now){if(!running)return;if(last!==0){t=Math.min(82,t+(now-last)/1000*4*Number(document.getElementById('speed').value));render()}last=now;if(t>=82){stop();return}frame=requestAnimationFrame(tick)}play.addEventListener('click',()=>{if(running){stop();return}if(t>=82)t=0;running=true;last=0;play.textContent='Ⅱ Pause';render();frame=requestAnimationFrame(tick)});document.getElementById('restart').addEventListener('click',()=>{stop();t=0;render()});slider.addEventListener('input',()=>{stop();t=Number(slider.value);render()});render();
+
+// Separate, correctly aligned haematopoietic-site panel.
+(function buildOrganPanel(){
+ const chartGroup=node('g',{transform:'translate(0 135)'});
+ const original=Array.from(svg.childNodes).filter(n=>n!==chartGroup);
+ original.forEach(n=>chartGroup.appendChild(n));
+ const band=node('g',{'aria-label':'Sites of haematopoiesis by developmental age'});
+ svg.insertBefore(band,chartGroup);
+ const L=90,R=800,T=20,B=125;
+ node('rect',{x:L,y:T,width:R-L,height:B-T,rx:8,fill:'#fffaf7',stroke:'#e1d9d2'},band);
+ const rows=[
+  {name:'Yolk sac',a:0,b:11,color:'#e990b5',y:27},
+  {name:'Liver',a:6,b:36,color:'#f3a39d',y:51},
+  {name:'Spleen',a:12,b:31,color:'#e5b68e',y:75},
+  {name:'Bone marrow',a:18,b:82,color:'#f2cf42',y:99}
+ ];
+ rows.forEach(o=>{
+   const start=X(o.a),end=X(o.b);
+   node('rect',{x:start,y:o.y,width:end-start,height:18,rx:7,fill:o.color,opacity:.9},band);
+   // Labels are outside short regions to avoid collisions.
+   const label=node('text',{x:o.name==='Yolk sac'?start+3:start+8,y:o.y+13,'font-size':o.name==='Yolk sac'?11:14,'font-weight':'bold',fill:'#392c2c'},band);
+   label.textContent=o.name;
+ });
+ node('line',{x1:X(40),x2:X(40),y1:20,y2:125,stroke:'#4d5968','stroke-width':1.7,'stroke-dasharray':'5 4'},band);
+ const heading=node('text',{x:90,y:13,'font-size':12,'font-weight':'bold',fill:'#526173'},band);
+ heading.textContent='Principal sites of haematopoiesis (schematic)';
+ const note=node('text',{x:800,y:139,'text-anchor':'end','font-size':10,fill:'#526173'},svg);
+ note.textContent='Regions indicate approximate developmental activity, not relative production rates';
+})();
+</script></body></html>
